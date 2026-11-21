@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import "./Dashboard.css";
@@ -28,6 +29,11 @@ export function Dashboard() {
 
     const [error, setError] = useState("");
     const [isOpen, setIsOpen] = useState(false);
+
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [exportLoading, setExportLoading] = useState(false);
+    const [exportMessage, setExportMessage] = useState("");
 
     const token = sessionStorage.getItem("SRM_Token");
 
@@ -180,7 +186,69 @@ const deleteStudent = (roll_no) => {
 
 };
 
-// SEARCH STUDENTS
+// EXPORT STUDENTS TO EXCEL
+    const exportStudents = async () => {
+        setExportMessage("");
+
+        if (!startDate || !endDate) {
+            setExportMessage("Please select both start and end dates.");
+            return;
+        }
+
+        if (startDate > endDate) {
+            setExportMessage("Start date cannot be after end date.");
+            return;
+        }
+
+        try {
+            setExportLoading(true);
+
+            const response = await fetch(
+                `${API}/export-students?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (!response.ok) {
+                let message = "Export failed. Please try again.";
+                try {
+                    const data = await response.json();
+                    message = data.message || message;
+                } catch {}
+                setExportMessage(message);
+                return;
+            }
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = downloadUrl;
+            link.download = `students_${startDate}_to_${endDate}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+
+            setExportMessage("Excel file downloaded successfully.");
+        } catch (err) {
+            console.error("Export error:", err);
+            setExportMessage("Unable to export students. Please check your connection.");
+        } finally {
+            setExportLoading(false);
+        }
+    };
+
+    // COURSE DISTRIBUTION
+    const courseData = Object.values(
+        students.reduce((counts, student) => {
+            const courseName = student.course?.trim() || "Unknown";
+            counts[courseName] = counts[courseName] || { course: courseName, students: 0 };
+            counts[courseName].students += 1;
+            return counts;
+        }, {})
+    );
+
+    // SEARCH STUDENTS
 const filteredStudents = students.filter(student =>
 
     student.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -191,11 +259,9 @@ const filteredStudents = students.filter(student =>
 );
 
 // COURSE COUNT
-const totalCourses = [...new Set(
-    students.map(student => student.course).filter(Boolean)
-)].length;
+    const totalCourses = courseData.length;
 
-return (
+    return (
 
     <div className="dashboard-layout">
 
@@ -241,24 +307,93 @@ return (
                     </button>
                 </section>
 
-                {/* STATISTICS */}
-                <section className="dashboard-stats">
-
-                    <div className="dashboard-stat-card">
-                        <span>Total Students</span>
-                        <h2>{students.length}</h2>
-                        <small>Registered students</small>
+                {/* STUDENT & COURSE OVERVIEW */}
+                <section className="dashboard-chart-section">
+                    <div className="dashboard-section-header">
+                        <div>
+                            <h2>Student & Course Overview</h2>
+                            <p>Quick overview of your institute</p>
+                        </div>
                     </div>
 
-                    <div className="dashboard-stat-card">
-                        <span>Total Courses</span>
-                        <h2>{totalCourses}</h2>
-                        <small>Available courses</small>
+                    <div className="dashboard-chart">
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart
+                                data={[
+                                    { name: "Students", total: students.length },
+                                    { name: "Courses", total: totalCourses }
+                                ]}
+                                margin={{ top: 15, right: 20, left: 0, bottom: 5 }}
+                                barCategoryGap="12%"
+                            >
+                                <CartesianGrid strokeDasharray="3 3" stroke="#263b34" />
+                                <XAxis dataKey="name" stroke="#b8c9c0" tick={{ fill: "#b8c9c0" }} />
+                                <YAxis allowDecimals={false} stroke="#b8c9c0" tick={{ fill: "#b8c9c0" }} />
+                                <Tooltip
+                                    contentStyle={{
+                                        background: "#101b16",
+                                        border: "1px solid #557565",
+                                        borderRadius: "0",
+                                        color: "#fff"
+                                    }}
+                                />
+                                <Bar
+                                    dataKey="total"
+                                    name="Total"
+                                    fill="#78b99a"
+                                    barSize={95}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
-
                 </section>
 
-                {/* STUDENT TABLE */}
+                {/* EXPORT STUDENTS */}
+                <section className="dashboard-export-section">
+                    <div className="dashboard-export-header">
+                        <div>
+                            <h2>Export Student Data</h2>
+                            <p>Download students registered within a date range.</p>
+                        </div>
+                    </div>
+
+                    <div className="dashboard-export-controls">
+                        <div className="dashboard-export-field">
+                            <label htmlFor="export-start-date">Start Date</label>
+                            <input
+                                id="export-start-date"
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="dashboard-export-field">
+                            <label htmlFor="export-end-date">End Date</label>
+                            <input
+                                id="export-end-date"
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                            />
+                        </div>
+
+                        <button
+                            type="button"
+                            className="dashboard-export-btn"
+                            onClick={exportStudents}
+                            disabled={exportLoading}
+                        >
+                            {exportLoading ? "Exporting..." : "Export Excel"}
+                        </button>
+                    </div>
+
+                    {exportMessage && (
+                        <p className="dashboard-export-message">{exportMessage}</p>
+                    )}
+                </section>
+
+                                {/* STUDENT TABLE */}
                 <section className="dashboard-student-section">
 
                     <div className="dashboard-section-header">
@@ -415,7 +550,6 @@ return (
                             value={form.roll_no}
                             onChange={handleChange}
                             required
-                            disabled={!!editRoll}
                         />
 
                         <label>Age</label>

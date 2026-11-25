@@ -8,7 +8,8 @@
     top: 0;
     box-sizing: border-box;
     padding: 28px 18px;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgb(28, 44, 114);
+    /* backdrop-filter: blur(20px); */
     border-right: 1px solid #26334a;
     display: flex;
     flex-direction: column;
@@ -17,10 +18,10 @@
 
 /* ANALYSIS SIDEBAR */
 
-.analysis-sidebar {
-    background-color: white;
+/* .analysis-sidebar {
+    background-color: rgb(30, 32, 100);
     color: black;
-}
+} */
 
 /* BRAND */
 
@@ -33,10 +34,12 @@
 
 .brand h2 {
     font-size: 22px;
+    color: #fdfdfe;
 }
 
 .brand span {
     color: #818cf8;
+    
 }
 
 .brand-icon {
@@ -58,7 +61,7 @@
     font-size: 11px;
     font-weight: 700;
     margin: 0 12px 15px;
-    letter-spacing: 2px;
+    letter-spacing: 4px;
 }
 
 .side-link {
@@ -102,18 +105,24 @@
 
 .admin-avatar {
     background: #312e81;
-    padding: 12px;
+    /* padding: 12px; */
     border-radius: 50%;
+    height: 40px;
+    width: 40px;
     flex-shrink: 0;
+    color: white;
+    text-align: center;
+    line-height: 40px;
 }
 
 .admin-profile h4 {
     font-size: 13px;
+    color: rgb(249, 249, 249);
 }
 
 .admin-profile p {
     font-size: 11px;
-    color: #94a3b8;
+    color: #fdfdfd;
     margin-top: 4px;
 }
 
